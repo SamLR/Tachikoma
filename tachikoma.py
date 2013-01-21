@@ -229,6 +229,8 @@ class Tachikoma():
     
      
     for item in self.pages:
+      if item.ext == ".md" or item.ext == ".markdown":
+        item.content = markdown.markdown(item.raw)
       write_out(self,item)
 
 
