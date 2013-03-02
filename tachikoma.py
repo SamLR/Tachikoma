@@ -1,4 +1,4 @@
-'''
+"""
 A Basic parser to replace Jekyll
 
 oni@section9.co.uk
@@ -7,7 +7,7 @@ TODO
 
 * Atom XML and RSS output
 
-'''
+"""
 
 import sys, os, argparse, yaml, shutil, time
 import markdown, threading, signal
@@ -59,22 +59,22 @@ class MyRequestHandler( SimpleHTTPRequestHandler ):
 
 
 class Item():
-  ''' 
+  """ 
   An item is either a blog post or a page
-  '''
+  """
   def __init__(self):
     self.date = datetime.now()
 
 
 class Tachikoma():
-  ''' build the actual site '''
+  """ build the actual site """
 
   def __init__(self, directory):
-    ''' Perform the intial setup with the directory'''
+    """ Perform the intial setup with the directory"""
     self.error_msg(self.set_working_dir(directory))
 
   def read_layouts(self):
-    ''' Scan for and read in layouts - memory intensive? probably not '''
+    """ Scan for and read in layouts - memory intensive? probably not """
     layout_dict = {}
     for fn in os.listdir(self.layout_dir):
       f = open(self.layout_dir + "/" + fn)
@@ -160,11 +160,11 @@ class Tachikoma():
 
 
   def parse_file_name(self, item):
-    '''
+    """
     Look at the file name to determine the date
     Format is year-month-day_title or year_month_day_title
     at the beginning of the file
-    '''
+    """
 
     tokens = item.name.split("-")
     
@@ -181,7 +181,7 @@ class Tachikoma():
 
   def parse_items(self):
 
-    ''' Scan the Item directory for pages '''
+    """Scan the Item directory for pages """
 
     # List level posts
     for fn in os.listdir(self.post_dir):
@@ -208,16 +208,16 @@ class Tachikoma():
 
 
   def build_items(self):
-    ''' Perform the markdown and jinja2 steps on the raw Items and write to files '''
-
-    def write_out(self,item):
+    """Perform the markdown and jinja2 steps on the raw Items and write to files"""
+    
+    def write_out(self,item,**kwargs):
       """Make the item into a jinja template, render it and write the output"""
       template = self.jinja_env.from_string(item.content)
-      item.rendered = template.render(item=item)
+      item.rendered = template.render(page=item, **kwargs)
       f = open(item.tpath + "/" + item.name + ".html", "w")
       f.write(item.rendered)
       f.close()
-    
+      
     for item in self.posts:
       # item.content = markdown.markdown(item.raw, ['outline(wrapper_tag=div,omit_head=True, wrapper_cls=s%(LEVEL)d box)'])
       
@@ -225,13 +225,14 @@ class Tachikoma():
       if item.ext == ".md" or item.ext == ".markdown":
         item.content = markdown.markdown(item.raw)
 
-      write_out(self,item) 
+      # write_out(self,{'item':item}) 
+      write_out(self, item) 
     
      
     for item in self.pages:
       if item.ext == ".md" or item.ext == ".markdown":
         item.content = markdown.markdown(item.raw)
-      write_out(self,item)
+      write_out(self, item, **{'site':self.site})
 
 
   def set_working_dir(self, directory):
@@ -258,7 +259,7 @@ class Tachikoma():
 
 
   def build(self):
-    ''' Build the site from the given directory '''
+    """ Build the site from the given directory """
 
     self.pages = []
     self.posts = []
@@ -279,7 +280,7 @@ class Tachikoma():
     return (True,"Finished Building")
 
   def clean(self):
-    ''' Remove the site and re-copy. Not called when the server is running '''
+    """ Remove the site and re-copy. Not called when the server is running """
 
     if os.path.exists(self.site_dir):
       shutil.rmtree(self.site_dir)
@@ -291,7 +292,7 @@ class Tachikoma():
 
 
   def copydirs(self):
-    ''' copy any directories to the _site dir that arent special dirs '''
+    """ copy any directories to the _site dir that arent special dirs """
     for fn in os.listdir(self.dir):
       if os.path.isdir(self.dir + "/" + fn) and fn[0] != "_" and fn[0] != ".":
         print("Copying directory " + fn + " to " + self.site_dir)
