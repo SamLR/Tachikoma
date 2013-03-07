@@ -17,6 +17,8 @@ from distutils import dir_util
 from jinja2 import Template, Environment, DictLoader
 from datetime import datetime
 
+from jinja2_date_filters import get_day_str, get_month_str
+
 class BuildThread(threading.Thread):
 
   def __init__(self,tachikoma):
@@ -312,37 +314,36 @@ if __name__ == "__main__":
   parser.add_argument("-s", "--server", action="store_true", help="run as a server")
   args = parser.parse_args()
 
-  
-  if args.directory and not args.server:
+  if args.directory:
     t = Tachikoma(args.directory)
-    t.clean()
-    result, msg = t.build()
-    print (msg)
-    quit()
-
-  if args.directory and args.server:
-    t = Tachikoma(args.directory)
+    # Add my own custom filters to jinja2
+    t.jinja_env.filters['get_day_str']=get_day_str
+    t.jinja_env.filters['get_month_str']=get_month_str
+    #
     t.clean()
     result, msg = t.build()
     print(msg)
-
-    server_class = HTTPServer
-    handler_class = MyRequestHandler
-    server_address = ('', 8000)
-    httpd = server_class(server_address, handler_class)
-  
-    s = BuildThread(t)
     
-    def signal_handler(signal, frame):
-      print('Quitting')
-      s.running = False
-      s.join()
+    if not args.server:
       quit()
+    else: 
+      server_class = HTTPServer
+      handler_class = MyRequestHandler
+      server_address = ('', 8000)
+      httpd = server_class(server_address, handler_class)
+  
+      s = BuildThread(t)
+    
+      def signal_handler(signal, frame):
+        print('Quitting')
+        s.running = False
+        s.join()
+        quit()
 
-    signal.signal(signal.SIGINT, signal_handler)
+      signal.signal(signal.SIGINT, signal_handler)
 
-    s.start()
+      s.start()
 
-    os.chdir(t.site_dir)
-    httpd.serve_forever()
+      os.chdir(t.site_dir)
+      httpd.serve_forever()
   
