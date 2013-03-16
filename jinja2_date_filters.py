@@ -9,6 +9,7 @@ def get_month_str(month_n):
   """
   months=("January", "Feburary", "March", "April", "May", "June", \
           "July", "August", "September", "October", "November", "December")
+  month_n = int(month_n)
   if month_n not in range(1,13): raise ValueError("Month must be in 1..12")
   return months[month_n - 1]
   
@@ -18,6 +19,7 @@ def get_day_str(day_n):
   Monday=0, Sunday=6
   """
   days=("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+  day_n = int(day_n)
   # if day_n not in range(7): raise DateStrException("Day must be in 0..6")
   if day_n not in range(7): raise ValueError("Day must be in 0..6")
   return days[day_n]
