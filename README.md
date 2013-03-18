@@ -11,10 +11,9 @@ This is written in Python3 and requires the following packages:
 * jinja2
 * jinja2 loop extention
 * yaml [download](http://pyyaml.org/wiki/PyYAML "PyYAML download page")
+* sudo pip-3.2 install git+git://github.com/OniDaito/mdx_outline.git
 
-Optionally
-
-* sudo pip3 install git+git://github.com/aleray/mdx_outline.git
+The last requirement is a custom version of the mdx_outline plugin for Markdown. You can use the master branch instead but check the comment in the code for this one.
 
 The structure of the website should be as follows
 

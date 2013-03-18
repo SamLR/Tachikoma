@@ -3,11 +3,10 @@ A Basic parser to replace Jekyll
 
 oni@section9.co.uk
 
-TODO
-
-* Atom XML and RSS output
+# TODO: Better config (especially site URL)
 
 """
+
 
 import sys, os, argparse, yaml, shutil, time
 import markdown, threading, signal
@@ -19,13 +18,53 @@ from datetime import datetime
 
 from jinja2_date_filters import get_day_str, get_month_str
 
+
+class Atomizer():
+  """
+  Create an atom.xml file for feeds 
+  """
+
+  def __init__(self,tachikoma):
+
+    self.tachikoma = tachikoma
+
+  def generate(self):
+
+
+    self.content = '''<?xml version="1.0" encoding="utf-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+    '''
+
+    self.content += "<title>" + self.tachikoma.site.title + "</title>\n"
+    self.content += "<link href=\"" + self.tachikoma.site_url + "/atom.xml\" />\n"
+    self.content += "<updated>" + datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ") + "</updated>\n"
+
+    for post in self.tachikoma.posts:
+      self.content += "<entry>\n"
+      self.content += "<title>" + post.title + "</title>\n"
+      self.content += "<link href=\"" + self.tachikoma.site_url + "/posts/" + post.name   + ".html\" />\n"
+      self.content += "<updated>" + post.date.strftime("%Y-%m-%dT%H:%M:%SZ") + "</updated>\n"
+      
+      self.content += "<title>" + post.title + "</title>\n"
+      #self.content += "<content type=\"html\">" + post.rendered + "</content>\n"
+      self.content += "<id>" + str(post.id) + "</id>"
+      self.content += "</entry>\n"
+
+    self.content += "</feed>\n"
+
+    f = open(self.tachikoma.site_dir + "/atom.xml", "w")
+    f.write(self.content)
+    f.close()
+
 class BuildThread(threading.Thread):
+  ''' A thread to watch the directory, forcing a rebuild if things change '''
 
   def __init__(self,tachikoma):
     threading.Thread.__init__ ( self )
     self.tachikoma = tachikoma
     self.dirs = {}
     self.set_times()
+    self.post_id = 0
 
   def set_times(self):
     for root, dirs, files in os.walk(self.tachikoma.dir):
@@ -74,6 +113,8 @@ class Tachikoma():
   def __init__(self, directory):
     """ Perform the intial setup with the directory"""
     self.error_msg(self.set_working_dir(directory))
+    # TODO change to "http://www.samlr.com"
+    self.site_url = "http://www.section9.co.uk"
 
   def read_layouts(self):
     """ Scan for and read in layouts - memory intensive? probably not """
@@ -107,6 +148,8 @@ class Tachikoma():
     item = Item()
     item.path, item.ext = os.path.splitext(path)
     item.name = os.path.basename(item.path)
+    item.id = self.post_id
+    self.post_id += 1
 
     if item.ext != ".md" and item.ext != ".markdown" and item.ext != ".html" and item.ext != ".htm":
       return (False, "Can only work with Markdown or HTML containing a YAML header")
@@ -141,10 +184,7 @@ class Tachikoma():
 
     if item.metadata["layout"] not in self.jinja_env.list_templates():
       return(False , "ERROR: no matching layout " + item.metadata["layout"] + " found in " + self.layout_dir )
-    
-    # Add an extends statement so that we can use blocks etc. in our templates
-    item_body = "{{% extends '{0}' %}}\n".format(item.metadata["layout"])+item_body
-    
+        
     # If markdown, set a raw step
     if item.ext == ".md" or item.ext == ".markdown":
       item.raw = item_body
@@ -185,6 +225,8 @@ class Tachikoma():
 
     """Scan the Item directory for pages """
 
+    self.post_id = 0
+
     # List level posts
     for fn in os.listdir(self.post_dir):
       result, item = self.parse_item(self.post_dir + "/" + fn)
@@ -215,31 +257,44 @@ class Tachikoma():
     def write_out(self,item,**kwargs):
       """Make the item into a jinja template, render it and write the output"""
       template = self.jinja_env.from_string(item.content)
-      item.rendered = template.render(page=item, **kwargs)
+      item.rendered = template.render(page=item, site=self.site, **kwargs)
       f = open(item.tpath + "/" + item.name + ".html", "w")
       f.write(item.rendered)
       f.close()
       
     for item in self.posts:
-      # item.content = markdown.markdown(item.raw, ['outline(wrapper_tag=div,omit_head=True, wrapper_cls=s%(LEVEL)d box)'])
       
-      # Use the line below if you just want standard markdown parsing - I used a special plugin for Section9
       if item.ext == ".md" or item.ext == ".markdown":
-        item.content = markdown.markdown(item.raw)
+        # this section tests for mdx-outline plugin for markdown, which section9 uses to create its masonry bricks
+        # its useful if you want sections but you can simply comment this out and use markdown straight if you prefer
+        try:
+          import mdx_outline
+          foo_loaded = True
+        except ImportError:
+          foo_loaded = False 
+        
+        if foo_loaded:
+          item.content = markdown.markdown(item.raw, ['outline(wrapper_tag=div,omit_head=True, wrapper_cls=s%(LEVEL)d box)'])
+        else:
+          item.content = markdown.markdown(item.raw)
 
-      # write_out(self,{'item':item}) 
-      write_out(self, item) 
+        # Since this is markdown, we cant add an extends statement so we set the whole thing as a content block
+        item.content = "{% block content %}\n" + item.content + "{% endblock %}"
+        item.content = "{{% extends '{0}' %}}\n".format(item.metadata["layout"]) + item.content
+  
+      write_out(self,item) 
     
      
     for item in self.pages:
       if item.ext == ".md" or item.ext == ".markdown":
         item.content = markdown.markdown(item.raw)
-      write_out(self, item, **{'site':self.site})
-
+      write_out(self, item)
 
   def set_working_dir(self, directory):
-
-    self.dir = os.getcwd() + "/" + directory
+    if directory[0]== "/":
+      self.dir = directory
+    else:
+      self.dir = os.getcwd() + "/" + directory
     self.post_dir = self.dir + "/_posts"
     self.site_dir = self.dir + "/_site"
     self.site_post_dir = self.dir + "/_site/posts"
@@ -269,7 +324,7 @@ class Tachikoma():
     
     # TODO Establish a method to set this in a global file
     # TODO Setup the site metadata first for the Items and such
-    self.site.title = "SamLR"
+    self.site.title = "Section9 dot co dot uk ltd"
 
     self.error_msg( self.parse_items() )
 
@@ -319,9 +374,10 @@ if __name__ == "__main__":
     # Add my own custom filters to jinja2
     t.jinja_env.filters['get_day_str']=get_day_str
     t.jinja_env.filters['get_month_str']=get_month_str
-    #
+    
     t.clean()
     result, msg = t.build()
+    a.generate()
     print(msg)
     
     if not args.server:
@@ -344,6 +400,5 @@ if __name__ == "__main__":
 
       s.start()
 
-      os.chdir(t.site_dir)
-      httpd.serve_forever()
-  
+    os.chdir(t.site_dir)
+    httpd.serve_forever()
