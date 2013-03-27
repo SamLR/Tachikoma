@@ -10,11 +10,12 @@ oni@section9.co.uk
 
 import sys, os, argparse, yaml, shutil, time
 import markdown, threading, signal
+from importlib import import_module
+from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
 
 from distutils import dir_util
 from jinja2 import Template, Environment, DictLoader
-from datetime import datetime
 
 from jinja2_date_filters import get_day_str, get_month_str
 
@@ -108,14 +109,19 @@ class Item():
 
 
 class Tachikoma():
-  """ build the actual site """
+  """
+  Build the actual site
+  """
 
   def __init__(self, directory):
-    """ Perform the intial setup with the directory"""
+    """
+    Perform the intial setup with the directory
+    """
     self.error_msg(self.set_working_dir(directory))
-    # TODO change to "http://www.samlr.com"
-    self.site_url = "http://www.section9.co.uk"
+    self.site_url = "http://www.samlr.com"
 
+  
+  
   def read_layouts(self):
     """ Scan for and read in layouts - memory intensive? probably not """
     layout_dict = {}
@@ -256,6 +262,7 @@ class Tachikoma():
     
     def write_out(self,item,**kwargs):
       """Make the item into a jinja template, render it and write the output"""
+      item.content = "{{% extends '{0}' %}}\n".format(item.metadata["layout"]) + item.content
       template = self.jinja_env.from_string(item.content)
       item.rendered = template.render(page=item, site=self.site, **kwargs)
       f = open(item.tpath + "/" + item.name + ".html", "w")
@@ -273,14 +280,10 @@ class Tachikoma():
         except ImportError:
           foo_loaded = False 
         
-        if foo_loaded:
-          item.content = markdown.markdown(item.raw, ['outline(wrapper_tag=div,omit_head=True, wrapper_cls=s%(LEVEL)d box)'])
-        else:
-          item.content = markdown.markdown(item.raw)
-
-        # Since this is markdown, we cant add an extends statement so we set the whole thing as a content block
-        item.content = "{% block content %}\n" + item.content + "{% endblock %}"
-        item.content = "{{% extends '{0}' %}}\n".format(item.metadata["layout"]) + item.content
+        # if foo_loaded:
+          # item.content = markdown.markdown(item.raw, ['outline(wrapper_tag=div,omit_head=True, wrapper_cls=s%(LEVEL)d box)'])
+        # else:
+        item.content = markdown.markdown(item.raw)
   
       write_out(self,item) 
     
@@ -371,12 +374,17 @@ if __name__ == "__main__":
 
   if args.directory:
     t = Tachikoma(args.directory)
+    t.clean()
+    
+    # TODO Make this part of the tachikoma init based on configuration
     # Add my own custom filters to jinja2
     t.jinja_env.filters['get_day_str']=get_day_str
     t.jinja_env.filters['get_month_str']=get_month_str
     
-    t.clean()
     result, msg = t.build()
+    
+    # TODO Make this part of the tachikoma init based on configuration
+    a = Atomizer(t)
     a.generate()
     print(msg)
     
