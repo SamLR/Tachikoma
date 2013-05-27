@@ -158,7 +158,7 @@ class Tachikoma():
     self.post_id += 1
 
     if item.ext != ".md" and item.ext != ".markdown" and item.ext != ".html" and item.ext != ".htm":
-      return (False, "Can only work with Markdown or HTML containing a YAML header")
+      return (False, "%s is either: not markdown, not HTML or missing a YAML header"%(item.name))
 
     for line in lines:
       if "---" in line: # this works but is a bit lame
@@ -327,7 +327,7 @@ class Tachikoma():
     
     # TODO Establish a method to set this in a global file
     # TODO Setup the site metadata first for the Items and such
-    self.site.title = "Section9 dot co dot uk ltd"
+    self.site.title = "SamLR.com"
 
     self.error_msg( self.parse_items() )
 
@@ -388,9 +388,7 @@ if __name__ == "__main__":
     a.generate()
     print(msg)
     
-    if not args.server:
-      quit()
-    else: 
+    if args.server:
       server_class = HTTPServer
       handler_class = MyRequestHandler
       server_address = ('', 8000)
@@ -408,5 +406,6 @@ if __name__ == "__main__":
 
       s.start()
 
-    os.chdir(t.site_dir)
-    httpd.serve_forever()
+      os.chdir(t.site_dir)
+      httpd.serve_forever()
+
