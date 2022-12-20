@@ -9,7 +9,8 @@ oni@section9.co.uk
 
 
 import sys, os, argparse, yaml, shutil, time
-import markdown, threading, signal
+import markdown, threading, signal, html
+import urllib.parse
 from importlib import import_module
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
@@ -42,12 +43,11 @@ class Atomizer():
 
     for post in self.tachikoma.posts:
       self.content += "<entry>\n"
-      self.content += "<title>" + post.title + "</title>\n"
-      self.content += "<link href=\"" + self.tachikoma.site_url + "/posts/" + post.name   + ".html\" />\n"
+      self.content += "<title>" + html.escape(post.title) + "</title>\n"
+      self.content += "<link href=\"" + self.tachikoma.site_url + "/posts/" + urllib.parse.quote(post.name)   + ".html\" />\n"
+      self.content += "<summary>" + html.escape(post.summary) + "</summary>\n"
       self.content += "<updated>" + post.date.strftime("%Y-%m-%dT%H:%M:%SZ") + "</updated>\n"
       
-      self.content += "<title>" + post.title + "</title>\n"
-      #self.content += "<content type=\"html\">" + post.rendered + "</content>\n"
       self.content += "<id>" + str(post.id) + "</id>"
       self.content += "</entry>\n"
 
@@ -88,7 +88,6 @@ class BuildThread(threading.Thread):
       self.set_times()
     
 
-
 class MyRequestHandler( SimpleHTTPRequestHandler ):
   def do_GET(self,*args,**kwds):
     tmp = self.path.split('/')
@@ -118,8 +117,7 @@ class Tachikoma():
     Perform the intial setup with the directory
     """
     self.error_msg(self.set_working_dir(directory))
-    self.site_url = "http://www.samlr.com"
-
+    self.site_url = "https://www.samlr.com"
   
   
   def read_layouts(self):
